@@ -8,34 +8,35 @@ use Illuminate\Support\Facades\Mail; // Import the Mail Facade
 
 class ContactController extends Controller
 {
-    public function handleContact(Request $request) 
-    {
-        // 1. Validate the incoming request data
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'subject' => 'required|string',
-            'message' => 'required|string'
-        ]);
+   public function handleContact(Request $request) 
+{
+    $data = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email',
+        'subject' => 'required|string',
+        'message' => 'required|string'
+    ]);
 
-        try {
-            // 2. Send the email to yourself
-            // Using your nikunjgupta02@gmail.com address
-            Mail::to('nikunjgupta02@gmail.com')->send(new ContactMessage($data));
+    try {
+        // 1. Notify YOU about the new message
+        Mail::to('nikunjgupta02@gmail.com')->send(new ContactMessage($data));
 
-            // 3. Return a successful JSON response
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Thanks ' . $data['name'] . ', I have received your message!'
-            ], 200);
+        // 2. Send an Auto-Reply to THEM
+        // We can pass a slightly different subject for them
+        Mail::to($data['email'])->send(new ContactMessage([
+            'name' => $data['name'],
+            'email' => 'nikunjgupta02@gmail.com', // Your contact info
+            'subject' => 'Confirmation: I received your message!',
+            'message' => "Hi {$data['name']}, thanks for reaching out! This is an automated confirmation to let you know I've received your message regarding '{$data['subject']}'. I'll get back to you as soon as possible."
+        ]));
 
-        } catch (\Exception $e) {
-            // 4. Handle any SMTP or Mail errors gracefully
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Sorry, something went wrong while sending your message.',
-                'debug' => $e->getMessage() // You can remove this for production
-            ], 500);
-        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Messages sent successfully!'
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
+}
 }
